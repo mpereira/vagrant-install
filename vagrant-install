@@ -1,0 +1,41 @@
+#!/usr/bin/env sh
+
+VIRTUALBOX_APT_SOURCE='deb http://download.virtualbox.org/virtualbox/debian raring contrib'
+VIRTUALBOX_APT_PACKAGE_NAME='virtualbox-4.3'
+ORACLE_APT_KEY_ENTRY='Oracle Corporation (VirtualBox archive signing key) <info@virtualbox.org>'
+VAGRANT_DEB_NAME='vagrant_1.3.5_x86_64.deb'
+VAGRANT_DEB_URL="http://files.vagrantup.com/packages/a40522f5fabccb9ddabad03d836e120ff5d14093/$VAGRANT_DEB_NAME"
+
+# Add Oracle Apt source.
+if ! grep -q "$VIRTUALBOX_APT_SOURCE" /etc/apt/sources.list; then
+  sudo sh -c "echo '$VIRTUALBOX_APT_SOURCE' >> /etc/apt/sources.list"
+fi
+
+# Add Oracle public key for Apt.
+if ! apt-key list | grep -q "$ORACLE_APT_KEY_ENTRY"; then
+  wget -q http://download.virtualbox.org/virtualbox/debian/oracle_vbox.asc -O- | sudo apt-key add -
+  sudo apt-get update
+fi
+
+# Install VirtualBox 4.3.
+if ! dpkg-query -s "$VIRTUALBOX_APT_PACKAGE_NAME" > /dev/null 2>&1; then
+  sudo apt-get install -y "$VIRTUALBOX_APT_PACKAGE_NAME"
+fi
+
+# Download Vagrant Debian package.
+if ! which vagrant > /dev/null 2>&1; then
+  wget -nc "$VAGRANT_DEB_URL" -P /tmp
+fi
+
+# Install Vagrant.
+if [ -f "/tmp/$VAGRANT_DEB_NAME" ]; then
+  sudo dpkg -i -E --force-confnew "/tmp/$VAGRANT_DEB_NAME"
+fi
+
+# Install vagrant-vbguest.
+#
+# The pre-release version is being installed because of
+# https://github.com/dotless-de/vagrant-vbguest/issues/99
+if ! vagrant plugin list | grep -q 'vagrant-vbguest (.*.pre.*)'; then
+  vagrant plugin install --plugin-source https://rubygems.org --plugin-prerelease vagrant-vbguest
+fi
